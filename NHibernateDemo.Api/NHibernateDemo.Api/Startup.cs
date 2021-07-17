@@ -4,6 +4,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using NHibernateDemo.Data;
+using NHibernateDemo.Entity.Models;
+using NHibernateDemo.Services;
 
 namespace NHibernateDemo.Api
 {
@@ -31,7 +34,13 @@ namespace NHibernateDemo.Api
 
             var connStr = Configuration.GetConnectionString("DefaultConnection");
 
+            // add NHibernate configuration
             services.AddNHibernate(connStr);
+
+            // dependencies for the project
+            services.AddScoped<ISamuraiAppDbContext, SamuraiAppDbContext>();
+            services.AddScoped<IGenericRepository<Samurai>, GenericRepository<Samurai>>();
+            services.AddScoped<ISamuraiService, SamuraiService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

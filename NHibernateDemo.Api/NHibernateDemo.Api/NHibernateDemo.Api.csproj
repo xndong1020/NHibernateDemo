@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\NHibernateDemo.Data\NHibernateDemo.Data\NHibernateDemo.Data.csproj" />
     <ProjectReference Include="..\..\NHibernateDemo.Entity\NHibernateDemo.Entity\NHibernateDemo.Entity.csproj" />
+    <ProjectReference Include="..\..\NHibernateDemo.Services\NHibernateDemo.Services\NHibernateDemo.Services.csproj" />
   </ItemGroup>
 
 </Project>

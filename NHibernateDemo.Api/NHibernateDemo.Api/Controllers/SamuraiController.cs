@@ -1,12 +1,11 @@
-﻿using System;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using NHibernate;
 using NHibernate.Linq;
-using NHibernateDemo.Data;
+using NHibernateDemo.Api.Dtos;
 using NHibernateDemo.Entity.Models;
+using NHibernateDemo.Services;
 
 namespace NHibernateDemo.Api.Controllers
 {
@@ -15,56 +14,61 @@ namespace NHibernateDemo.Api.Controllers
     public class SamuraiController : ControllerBase
     {
         private readonly ILogger<SamuraiController> _logger;
+        private readonly ISamuraiService _samuraiService;
 
-        private readonly ISession _session;
-        private readonly IGenericRepository<Samurai> _repository;
-
-        public SamuraiController(ILogger<SamuraiController> logger, ISession session, IGenericRepository<Samurai> repository)
+        public SamuraiController(ILogger<SamuraiController> logger, ISamuraiService samuraiService)
         {
             _logger = logger;
-            _session = session;
-            _repository = repository;
+            _samuraiService = samuraiService;
         }
 
         [HttpGet]
-        public async Task<IEnumerable<Samurai>> Get()
+        public async Task<IEnumerable<Samurai>> Get(int? id)
         {
-            try
-            {
-                _repository.BeginTransaction();
-                var newSamurai = new Samurai
-                {
-                    Name = "Hahahaahah007"
+            if (!id.HasValue) return await _samuraiService.GetAll().ToListAsync();
 
-                };
-
-                newSamurai.Quotes = new HashSet<Quote>
-                {
-                    new Quote() {Text = "Hahahaahah007 text1", Samurai = newSamurai},
-                    new Quote() {Text = "Hahahaahah007 text2", Samurai = newSamurai},
-                    new Quote() {Text = "Hahahaahah007 text3", Samurai = newSamurai}
-                };
+            var samurai = await _samuraiService.GetById(id.Value);
+            return new List<Samurai>() { samurai };
+        }
 
 
-                await _repository.Create(newSamurai);
+        [HttpPost]
+        public async Task<ActionResult<int>> Post([FromBody] SamuraiCreateInput input)
+        {
+            var newSamurai = new Samurai { Name = input.Name };
 
-                await _repository.Commit();
+            foreach (var quote in input.Quotes)
+                newSamurai.Quotes.Add(new Quote() { Text = quote.Text, Samurai = newSamurai });
 
-                //var samurais = await _session.Samurais.ToListAsync();
-                var samurais = await _repository.GetAll().ToListAsync();
+            await _samuraiService.Create(newSamurai);
 
-                return samurais;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                await _repository.Rollback();
-                throw;
-            }
-            finally
-            {
-                _repository.CloseTransaction();
-            }
+            return NoContent();
+        }
+
+        [HttpPut]
+        public async Task<ActionResult<int>> Put([FromBody] SamuraiUpdateInput input)
+        {
+            var oldSamurai = await _samuraiService.GetById(input.Id);
+
+            if (oldSamurai == null) return NotFound();
+
+            oldSamurai.Name = input.Name;
+            oldSamurai.Quotes.Clear();
+            foreach (var quote in input.Quotes)
+                oldSamurai.Quotes.Add(new Quote() { Text = quote.Text, Samurai = oldSamurai });
+
+            await _samuraiService.Update(oldSamurai.Id, oldSamurai);
+
+            return NoContent();
+        }
+
+        [HttpDelete]
+        public async Task<ActionResult<int>> Delete([FromBody] int id)
+        {
+            var oldSamurai = await _samuraiService.GetById(id);
+            if (oldSamurai == null) return NotFound();
+            await _samuraiService.Delete(oldSamurai);
+            return NoContent();
         }
     }
 }

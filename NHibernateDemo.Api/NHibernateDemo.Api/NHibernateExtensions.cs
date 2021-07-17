@@ -5,7 +5,6 @@ using NHibernate.Cfg.MappingSchema;
 using NHibernate.Dialect;
 using NHibernate.Driver;
 using NHibernate.Mapping.ByCode;
-using NHibernateDemo.Data;
 using NHibernateDemo.Entity.Models;
 
 namespace NHibernateDemo.Api
@@ -15,9 +14,9 @@ namespace NHibernateDemo.Api
         public static IServiceCollection AddNHibernate(this IServiceCollection services, string connectionString)
         {
             var mapper = new ModelMapper();
-            var assembly = typeof(IEntity).Assembly;
-
+            var assembly = typeof(IEntity).Assembly; // All entities implements IEntity interface, and saved in Entity Assembly
             mapper.AddMappings(assembly.ExportedTypes);
+
             HbmMapping domainMapping = mapper.CompileMappingForAllExplicitlyAddedEntities();
 
             var configuration = new Configuration();
@@ -41,8 +40,6 @@ namespace NHibernateDemo.Api
             services.AddSingleton(sessionFactory);
             services.AddScoped(factory => sessionFactory.OpenSession());
             services.AddScoped(factory => sessionFactory.OpenStatelessSession());
-            services.AddScoped<ISamuraiAppDbContext, SamuraiAppDbContext>();
-            services.AddScoped<IGenericRepository<Samurai>, GenericRepository<Samurai>>();
 
             return services;
         }

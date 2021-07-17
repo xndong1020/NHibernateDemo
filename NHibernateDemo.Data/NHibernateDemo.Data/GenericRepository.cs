@@ -35,9 +35,9 @@ namespace NHibernateDemo.Data
             return _session.UpdateAsync(entity, id);
         }
 
-        public Task Delete(int id)
+        public Task Delete(TEntity entity)
         {
-            return _session.DeleteAsync(id);
+            return _session.DeleteAsync(entity);
         }
 
         public void BeginTransaction()

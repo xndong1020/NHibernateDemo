@@ -14,7 +14,7 @@ namespace NHibernateDemo.Data
 
         Task Update(int id, TEntity entity);
 
-        Task Delete(int id);
+        Task Delete(TEntity entity);
 
         void BeginTransaction();
         Task Commit();
