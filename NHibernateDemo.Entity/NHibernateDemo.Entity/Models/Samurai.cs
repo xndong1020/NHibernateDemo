@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
 using FluentNHibernate.Mapping;
 
-namespace NHibernateDemo.Entity.Models 
+namespace NHibernateDemo.Entity.Models
 {
-    public class Samurai : BaseEntity
+    public class Samurai : IEntity
     {
+        public virtual int Id { get; set; }
         public virtual string Name { get; set; }
 
         public virtual ISet<Quote> Quotes { get; set; } = new HashSet<Quote>();

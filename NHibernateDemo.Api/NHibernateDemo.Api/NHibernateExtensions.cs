@@ -15,7 +15,7 @@ namespace NHibernateDemo.Api
         public static IServiceCollection AddNHibernate(this IServiceCollection services, string connectionString)
         {
             var mapper = new ModelMapper();
-            var assembly = typeof(BaseEntity).Assembly;
+            var assembly = typeof(IEntity).Assembly;
 
             mapper.AddMappings(assembly.ExportedTypes);
             HbmMapping domainMapping = mapper.CompileMappingForAllExplicitlyAddedEntities();
@@ -42,6 +42,7 @@ namespace NHibernateDemo.Api
             services.AddScoped(factory => sessionFactory.OpenSession());
             services.AddScoped(factory => sessionFactory.OpenStatelessSession());
             services.AddScoped<ISamuraiAppDbContext, SamuraiAppDbContext>();
+            services.AddScoped<IGenericRepository<Samurai>, GenericRepository<Samurai>>();
 
             return services;
         }

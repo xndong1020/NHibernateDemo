@@ -2,8 +2,10 @@
 
 namespace NHibernateDemo.Entity.Models
 {
-    public class Quote : BaseEntity
+    public class Quote : IEntity
     {
+        public virtual int Id { get; set; }
+
         public virtual string Text { get; set; }
 
         public virtual Samurai Samurai { get; set; }

@@ -16,13 +16,14 @@ namespace NHibernateDemo.Api.Controllers
     {
         private readonly ILogger<SamuraiController> _logger;
 
-        //private readonly ISession _session;
-        private readonly ISamuraiAppDbContext _session;
+        private readonly ISession _session;
+        private readonly IGenericRepository<Samurai> _repository;
 
-        public SamuraiController(ILogger<SamuraiController> logger, ISamuraiAppDbContext session)
+        public SamuraiController(ILogger<SamuraiController> logger, ISession session, IGenericRepository<Samurai> repository)
         {
             _logger = logger;
             _session = session;
+            _repository = repository;
         }
 
         [HttpGet]
@@ -30,7 +31,7 @@ namespace NHibernateDemo.Api.Controllers
         {
             try
             {
-                _session.BeginTransaction();
+                _repository.BeginTransaction();
                 var newSamurai = new Samurai
                 {
                     Name = "Hahahaahah007"
@@ -45,23 +46,24 @@ namespace NHibernateDemo.Api.Controllers
                 };
 
 
-                await _session.Save(newSamurai);
+                await _repository.Create(newSamurai);
 
-                await _session.Commit();
+                await _repository.Commit();
 
-                var samurais = await _session.Samurais.ToListAsync();
+                //var samurais = await _session.Samurais.ToListAsync();
+                var samurais = await _repository.GetAll().ToListAsync();
 
                 return samurais;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                await _session.Rollback();
+                await _repository.Rollback();
                 throw;
             }
             finally
             {
-                _session.CloseTransaction();
+                _repository.CloseTransaction();
             }
         }
     }
