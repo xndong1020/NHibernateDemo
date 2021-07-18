@@ -36,6 +36,7 @@ namespace NHibernateDemo.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<int>> Post([FromBody] SamuraiCreateInput input)
         {
+            if (!ModelState.IsValid) return BadRequest();
             var newSamurai = new Samurai { Name = input.Name };
 
             foreach (var quote in input.Quotes)
@@ -49,6 +50,7 @@ namespace NHibernateDemo.Api.Controllers
         [HttpPut]
         public async Task<ActionResult<int>> Put([FromBody] SamuraiUpdateInput input)
         {
+            if (!ModelState.IsValid) return BadRequest();
             var oldSamurai = await _samuraiService.GetById(input.Id);
 
             if (oldSamurai == null) return NotFound();
