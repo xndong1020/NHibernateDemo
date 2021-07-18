@@ -27,7 +27,8 @@ namespace NHibernateDemo.Api.Controllers
         {
             if (!id.HasValue) return await _samuraiService.GetAll().ToListAsync();
 
-            var samurai = await _samuraiService.GetById(id.Value);
+            // var samurai = await _samuraiService.GetById(id.Value);
+            var samurai = _samuraiService.FindBy(s => s.Id == id.Value);
             return new List<Samurai>() { samurai };
         }
 

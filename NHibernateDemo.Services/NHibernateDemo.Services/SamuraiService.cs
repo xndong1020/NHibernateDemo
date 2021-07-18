@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using NHibernate;
 using NHibernateDemo.Data;
@@ -9,10 +10,12 @@ namespace NHibernateDemo.Services
 {
     public class SamuraiService : ISamuraiService
     {
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IGenericRepository<Samurai> _repository;
-        public SamuraiService(ISession session, IGenericRepository<Samurai> repository)
+        public SamuraiService(ISession session, IGenericRepository<Samurai> repository, IUnitOfWork unitOfWork)
         {
             _repository = repository;
+            _unitOfWork = unitOfWork;
         }
         public IQueryable<Samurai> GetAll()
         {
@@ -24,23 +27,28 @@ namespace NHibernateDemo.Services
             return _repository.GetById(id);
         }
 
+        public Samurai FindBy(Expression<Func<Samurai, bool>> expression)
+        {
+            return _repository.FindBy(expression);
+        }
+
         public async Task Create(Samurai samurai)
         {
             try
             {
-                _repository.BeginTransaction();
+                _unitOfWork.BeginTransaction();
                 await _repository.Create(samurai);
-                await _repository.Commit();
+                await _unitOfWork.Commit();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                await _repository.Rollback();
+                await _unitOfWork.Rollback();
                 throw;
             }
             finally
             {
-                _repository.CloseTransaction();
+                _unitOfWork.Dispose();
             }
         }
 
@@ -48,19 +56,19 @@ namespace NHibernateDemo.Services
         {
             try
             {
-                _repository.BeginTransaction();
+                _unitOfWork.BeginTransaction();
                 await _repository.Update(id, samurai);
-                await _repository.Commit();
+                await _unitOfWork.Commit();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                await _repository.Rollback();
+                await _unitOfWork.Rollback();
                 throw;
             }
             finally
             {
-                _repository.CloseTransaction();
+                _unitOfWork.Dispose();
             }
         }
 
@@ -68,19 +76,19 @@ namespace NHibernateDemo.Services
         {
             try
             {
-                _repository.BeginTransaction();
+                _unitOfWork.BeginTransaction();
                 await _repository.Delete(entity);
-                await _repository.Commit();
+                await _unitOfWork.Commit();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                await _repository.Rollback();
+                await _unitOfWork.Rollback();
                 throw;
             }
             finally
             {
-                _repository.CloseTransaction();
+                _unitOfWork.Dispose();
             }
         }
     }

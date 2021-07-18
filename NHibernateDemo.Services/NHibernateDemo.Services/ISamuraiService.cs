@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using NHibernateDemo.Entity.Models;
 
@@ -9,6 +11,8 @@ namespace NHibernateDemo.Services
         IQueryable<Samurai> GetAll();
 
         Task<Samurai> GetById(int id);
+
+        Samurai FindBy(Expression<Func<Samurai, bool>> expression);
 
         Task Create(Samurai entity);
 

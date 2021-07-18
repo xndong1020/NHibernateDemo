@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using NHibernate;
 using NHibernateDemo.Entity.Models;
@@ -8,7 +10,6 @@ namespace NHibernateDemo.Data
     public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEntity : class, IEntity
     {
         private readonly ISession _session;
-        private ITransaction _transaction;
 
         public GenericRepository(ISession session)
         {
@@ -25,9 +26,19 @@ namespace NHibernateDemo.Data
             return _session.GetAsync<TEntity>(id);
         }
 
+        public TEntity FindBy(Expression<Func<TEntity, bool>> expression)
+        {
+            return FilterBy(expression).Single();
+        }
+
+        public IQueryable<TEntity> FilterBy(Expression<Func<TEntity, bool>> expression)
+        {
+            return GetAll().Where(expression).AsQueryable();
+        }
+
         public Task Create(TEntity entity)
         {
-           return _session.SaveAsync(entity);
+            return _session.SaveAsync(entity);
         }
 
         public Task Update(int id, TEntity entity)
@@ -38,30 +49,6 @@ namespace NHibernateDemo.Data
         public Task Delete(TEntity entity)
         {
             return _session.DeleteAsync(entity);
-        }
-
-        public void BeginTransaction()
-        {
-            _transaction = _session.BeginTransaction();
-        }
-
-        public async Task Commit()
-        {
-            await _transaction.CommitAsync();
-        }
-
-        public async Task Rollback()
-        {
-            await _transaction.RollbackAsync();
-        }
-
-        public void CloseTransaction()
-        {
-            if (_transaction != null)
-            {
-                _transaction.Dispose();
-                _transaction = null;
-            }
         }
     }
 }

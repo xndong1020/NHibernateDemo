@@ -41,6 +41,7 @@ namespace NHibernateDemo.Api
             services.AddScoped<ISamuraiAppDbContext, SamuraiAppDbContext>();
             services.AddScoped<IGenericRepository<Samurai>, GenericRepository<Samurai>>();
             services.AddScoped<ISamuraiService, SamuraiService>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

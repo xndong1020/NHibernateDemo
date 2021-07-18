@@ -571,3 +571,285 @@ Note:
    ```
 
    ​            
+
+
+
+#### 2021.07.18 Update: Add Unit of work to manage transaction
+
+Previously, the IGenericRepository is responsible for managing transaction. We can move transaction related code to IUnitOfWork
+
+```c#
+public interface IUnitOfWork : IDisposable
+{
+    ITransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
+
+    Task Commit();
+
+    Task Rollback();
+}
+```
+
+
+
+And its implementation class `UnitOfWork`
+
+```c#
+using System.Data;
+using System.Threading.Tasks;
+using NHibernate;
+
+namespace NHibernateDemo.Data
+{
+    public class UnitOfWork : IUnitOfWork
+    {
+        private readonly ISession _session;
+        private ITransaction _transaction;
+
+        public UnitOfWork(ISession session)
+        {
+            _session = session;
+        }
+
+        public ITransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
+        {
+            // if a transaction has already active, then don't start another transaction
+            if (_transaction != null && _transaction.IsActive) return _transaction;
+
+            // if a transaction is inactive, then dispose it
+            _transaction?.Dispose();
+
+            _transaction = _session.BeginTransaction(isolationLevel);
+
+            return _transaction;
+        }
+
+        public async Task Commit()
+        {
+            try
+            {
+                await _transaction.CommitAsync();
+            }
+            catch
+            {
+                await _transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task Rollback()
+        {
+            await _transaction.RollbackAsync();
+        }
+
+        public void Dispose()
+        {
+            if (_transaction != null)
+            {
+                _transaction.Dispose();
+                _transaction = null;
+            }
+        }
+    }
+}
+
+```
+
+
+
+**Note**:
+Initially BeginTransaction function was like ` void BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)`
+
+But if you want to use `using` statement to **auto release** the transaction, then this method must return the resource(s) to be released, in our case it is the transaction. 
+
+Something like `ITransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)`
+
+To use this unitOfWork in our services
+
+
+
+```c#
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using NHibernate;
+using NHibernateDemo.Data;
+using NHibernateDemo.Entity.Models;
+
+namespace NHibernateDemo.Services
+{
+    public class SamuraiService : ISamuraiService
+    {
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IGenericRepository<Samurai> _repository;
+        public SamuraiService(ISession session, IGenericRepository<Samurai> repository, IUnitOfWork unitOfWork)
+        {
+            _repository = repository;
+            _unitOfWork = unitOfWork;
+        }
+        public IQueryable<Samurai> GetAll()
+        {
+            return _repository.GetAll();
+        }
+
+        public Task<Samurai> GetById(int id)
+        {
+            return _repository.GetById(id);
+        }
+
+        public async Task Create(Samurai samurai)
+        {
+            try
+            {
+                _unitOfWork.BeginTransaction();
+                await _repository.Create(samurai);
+                await _unitOfWork.Commit();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                await _unitOfWork.Rollback();
+                throw;
+            }
+            finally
+            {
+                _unitOfWork.Dispose();
+            }
+        }
+
+        public async Task Update(int id, Samurai samurai)
+        {
+            try
+            {
+                _unitOfWork.BeginTransaction();
+                await _repository.Update(id, samurai);
+                await _unitOfWork.Commit();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                await _unitOfWork.Rollback();
+                throw;
+            }
+            finally
+            {
+                _unitOfWork.Dispose();
+            }
+        }
+
+        public async Task Delete(Samurai entity)
+        {
+            try
+            {
+                _unitOfWork.BeginTransaction();
+                await _repository.Delete(entity);
+                await _unitOfWork.Commit();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                await _unitOfWork.Rollback();
+                throw;
+            }
+            finally
+            {
+                _unitOfWork.Dispose();
+            }
+        }
+    }
+}
+
+```
+
+And our IGenericRepository interface:
+
+```
+public interface IGenericRepository<TEntity> where TEntity : class, IEntity
+{
+    IQueryable<TEntity> GetAll();
+
+    Task<TEntity> GetById(int id);
+
+    TEntity FindBy(Expression<Func<TEntity, bool>> expression);
+
+    IQueryable<TEntity> FilterBy(Expression<Func<TEntity, bool>> expression);
+
+    Task Create(TEntity entity);
+
+    Task Update(int id, TEntity entity);
+
+    Task Delete(TEntity entity);
+}
+```
+
+GenericRepository class
+
+```c#
+using System;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
+using NHibernate;
+using NHibernateDemo.Entity.Models;
+
+namespace NHibernateDemo.Data
+{
+    public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEntity : class, IEntity
+    {
+        private readonly ISession _session;
+
+        public GenericRepository(ISession session)
+        {
+            _session = session;
+        }
+
+        public IQueryable<TEntity> GetAll()
+        {
+            return _session.Query<TEntity>();
+        }
+
+        public Task<TEntity> GetById(int id)
+        {
+            return _session.GetAsync<TEntity>(id);
+        }
+
+        public TEntity FindBy(Expression<Func<TEntity, bool>> expression)
+        {
+            return FilterBy(expression).Single();
+        }
+
+        public IQueryable<TEntity> FilterBy(Expression<Func<TEntity, bool>> expression)
+        {
+            return GetAll().Where(expression).AsQueryable();
+        }
+
+        public Task Create(TEntity entity)
+        {
+            return _session.SaveAsync(entity);
+        }
+
+        public Task Update(int id, TEntity entity)
+        {
+            return _session.UpdateAsync(entity, id);
+        }
+
+        public Task Delete(TEntity entity)
+        {
+            return _session.DeleteAsync(entity);
+        }
+    }
+}
+
+```
+
+
+
+`TEntity FindBy(Expression<Func<TEntity, bool>> expression)` accepts an System.LinqExpressions.Expression<TDelegate> as an argument,  this expression takes a strongly typed lambda function as its type parameter. 
+
+To use the FindBy method, for example find by Samurai Id, we can do 
+
+```c#
+var samurai = _samuraiService.FindBy(s => s.Id == id.Value);
+```
+
+In above case, the express takes a `Func<Samurai, bool>` as its type parameter, and this delegate takes Samurai as input, and output a bool value. Hence we can pass in a lambda function like `s => s.Id == id.Value`
+
